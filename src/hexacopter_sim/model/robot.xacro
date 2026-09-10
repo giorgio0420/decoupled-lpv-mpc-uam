@@ -1,0 +1,621 @@
+<robot name="base_link1_respondable">
+    <link name="robot_base">
+        <inertial>
+            <origin xyz="0.000000 0.000000 2.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <inertia iyy="0.18" ixx="0.18" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.3" />
+            <mass value="4.9982" />
+        </inertial>
+        <collision name="base_link1_respondable">
+            <origin xyz="0.000000 0.000000 2.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.031500 0.450000 0.010000" />
+            </geometry>
+        </collision>
+        <visual name="base_link1_visual">
+            <origin xyz="0.000000 0.000000 2.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.031500 0.450000 0.010000" />
+            </geometry>
+            <material name="base_link1_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="fixed" name="center">
+        <axis xyz="0 0 1" />
+        <parent link="robot_base" />
+        <child link="base_link2_respondable" />
+        <origin xyz="0.000000 0.000000 2.000000" rpy="-3.141593 3.141593 2.617994" />
+    </joint>
+    <link name="base_link2_respondable">
+        <inertial>
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 2.617994" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="base_link2_respondable">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 2.617994" />
+            <geometry>
+                <box size="0.031500 0.450000 0.010000" />
+            </geometry>
+        </collision>
+        <visual name="base_link2_visual">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 2.617994" />
+            <geometry>
+                <box size="0.031500 0.450000 0.010000" />
+            </geometry>
+            <material name="base_link2_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="fixed" name="center2">
+        <axis xyz="0 0 1" />
+        <parent link="base_link2_respondable" />
+        <child link="base_link3_respondable" />
+        <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+    </joint>
+    <link name="base_link3_respondable">
+        <inertial>
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -1.570796" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="base_link3_respondable">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -1.570796" />
+            <geometry>
+                <box size="0.031500 0.450000 0.010000" />
+            </geometry>
+        </collision>
+        <visual name="base_link3_visual">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -1.570796" />
+            <geometry>
+                <box size="0.031500 0.450000 0.010000" />
+            </geometry>
+            <material name="base_link3_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="continuous" name="joint_left_prop">
+        <axis xyz="0 0 1" />
+        <parent link="base_link3_respondable" />
+        <child link="prop_left_respondable" />
+        <origin xyz="-0.200000 -0.000000 0.021000" rpy="-3.141593 3.141593 -3.141593" />
+    </joint>
+    <link name="prop_left_respondable">
+        <inertial>
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="prop_left_respondable">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.011007 0.160000 0.001000" />
+            </geometry>
+        </collision>
+        <visual name="prop_left_visual">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.011007 0.160000 0.001000" />
+            </geometry>
+            <material name="prop_left_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="continuous" name="joint_right_prop">
+        <axis xyz="0 0 1" />
+        <parent link="base_link3_respondable" />
+        <child link="prop_right_respondable" />
+        <origin xyz="0.200000 -0.000000 0.021000" rpy="-3.141593 3.141593 -3.141593" />
+    </joint>
+    <link name="prop_right_respondable">
+        <inertial>
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="prop_right_respondable">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.011007 0.160000 0.001000" />
+            </geometry>
+        </collision>
+        <visual name="prop_right_visual">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.011007 0.160000 0.001000" />
+            </geometry>
+            <material name="prop_right_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="continuous" name="joint_front_right_prop">
+        <axis xyz="0 0 1" />
+        <parent link="base_link2_respondable" />
+        <child link="prop_front_right_respondable" />
+        <origin xyz="0.100000 0.173200 0.021000" rpy="-3.141593 3.141593 -3.141593" />
+    </joint>
+    <link name="prop_front_right_respondable">
+        <inertial>
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="prop_front_right_respondable">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.011007 0.160000 0.001000" />
+            </geometry>
+        </collision>
+        <visual name="prop_front_right_visual">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.011007 0.160000 0.001000" />
+            </geometry>
+            <material name="prop_front_right_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="continuous" name="joint_back_right_prop">
+        <axis xyz="0 0 1" />
+        <parent link="base_link2_respondable" />
+        <child link="prop_back_right_respondable" />
+        <origin xyz="0.100001 -0.173200 0.021000" rpy="-3.141593 3.141593 -3.141593" />
+    </joint>
+    <link name="prop_back_right_respondable">
+        <inertial>
+            <origin xyz="0.000000 -0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="prop_back_right_respondable">
+            <origin xyz="0.000000 -0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.011007 0.160000 0.001000" />
+            </geometry>
+        </collision>
+        <visual name="prop_back_left_visual">
+            <origin xyz="0.000000 -0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.011007 0.160000 0.001000" />
+            </geometry>
+            <material name="prop_back_left_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="fixed" name="joint_plate1_frame">
+        <axis xyz="0 0 1" />
+        <parent link="base_link2_respondable" />
+        <child link="plate1_respondable" />
+        <origin xyz="0.000000 0.000000 0.005000" rpy="-3.141593 3.141593 -3.141593" />
+    </joint>
+    <link name="plate1_respondable">
+        <inertial>
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="plate1_respondable">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.120000 0.120000 0.010000" />
+            </geometry>
+        </collision>
+        <visual name="plate1_visual">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.120000 0.120000 0.010000" />
+            </geometry>
+            <material name="plate1_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="fixed" name="joint_plate2_frame">
+        <axis xyz="0 0 1" />
+        <parent link="plate1_respondable" />
+        <child link="plate2_respondable" />
+        <origin xyz="0.000000 0.000000 0.007000" rpy="-3.141593 3.141593 -3.141593" />
+    </joint>
+    <link name="plate2_respondable">
+        <inertial>
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="plate2_respondable">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.050000 0.030000 0.005000" />
+            </geometry>
+        </collision>
+        <visual name="plate2_visual">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.050000 0.030000 0.005000" />
+            </geometry>
+            <material name="plate2_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="fixed" name="joint_arduino_frame">
+        <axis xyz="0 0 1" />
+        <parent link="plate2_respondable" />
+        <child link="arduino_respondable" />
+        <origin xyz="0.000000 0.000000 0.005000" rpy="-3.141593 3.141593 -3.141593" />
+    </joint>
+    <link name="arduino_respondable">
+        <inertial>
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="arduino_respondable">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.100000 0.100000 0.001000" />
+            </geometry>
+        </collision>
+        <visual name="arduino_visual">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.100000 0.100000 0.005000" />
+            </geometry>
+            <material name="arduino_visual_material">
+                <color rgba="0.100000 0.500000 0.100000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="fixed" name="joint_camera_frame">
+        <axis xyz="0 0 1" />
+        <parent link="plate2_respondable" />
+        <child link="camera_link_respondable" />
+        <origin xyz="0.030000 0.000000 0.005000" rpy="-3.141593 3.041593 -3.141593" />
+    </joint>
+    <link name="camera_link_respondable">
+        <inertial>
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="camera_link_respondable">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.010000 0.010000 0.010000" />
+            </geometry>
+        </collision>
+        <visual name="camera_link_visual">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.010000 0.010000 0.010000" />
+            </geometry>
+            <material name="camera_link_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="fixed" name="joint_cyl1_frame">
+        <axis xyz="0 0 1" />
+        <parent link="base_link2_respondable" />
+        <child link="cyl1_respondable" />
+        <origin xyz="0.100000 0.173200 0.010000" rpy="-3.141593 3.141593 -3.141593" />
+    </joint>
+    <link name="cyl1_respondable">
+        <inertial>
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -1.570796" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="cyl1_respondable">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -1.570796" />
+            <geometry>
+                <cylinder length="0.02" radius="0.016" />
+            </geometry>
+        </collision>
+        <visual name="cyl1_visual">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -1.570796" />
+            <geometry>
+                <cylinder length="0.02" radius="0.016" />
+            </geometry>
+            <material name="cyl1_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="fixed" name="joint_cyl2_frame">
+        <axis xyz="0 0 1" />
+        <parent link="base_link2_respondable" />
+        <child link="cyl2_respondable" />
+        <origin xyz="-0.100000 0.173200 0.010000" rpy="-3.141593 3.141593 -3.141593" />
+    </joint>
+    <link name="cyl2_respondable">
+        <inertial>
+            <origin xyz="-0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="cyl2_respondable">
+            <origin xyz="-0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <cylinder length="0.02" radius="0.016" />
+            </geometry>
+        </collision>
+        <visual name="cyl2_visual">
+            <origin xyz="-0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <cylinder length="0.02" radius="0.016" />
+            </geometry>
+            <material name="cyl2_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="continuous" name="joint_front_left_prop">
+        <axis xyz="0 0 1" />
+        <parent link="robot_base" />
+        <child link="prop_front_left_respondable" />
+        <origin xyz="-0.000003 0.199996 2.021000" rpy="-3.141593 3.141593 2.617994" />
+    </joint>
+    <link name="prop_front_left_respondable">
+        <inertial>
+            <origin xyz="-0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="prop_front_left_respondable">
+            <origin xyz="-0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.011007 0.160000 0.001000" />
+            </geometry>
+        </collision>
+        <visual name="prop_front_left_visual">
+            <origin xyz="-0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.011007 0.160000 0.001000" />
+            </geometry>
+            <material name="prop_front_left_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="continuous" name="joint_back_left_prop">
+        <axis xyz="0 0 1" />
+        <parent link="robot_base" />
+        <child link="prop_back_left_respondable" />
+        <origin xyz="-0.173203 -0.099996 2.021000" rpy="-3.141593 3.141593 2.617994" />
+    </joint>
+    <link name="prop_back_left_respondable">
+        <inertial>
+            <origin xyz="-0.000000 -0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="prop_back_left_respondable">
+            <origin xyz="-0.000000 -0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.011007 0.160000 0.001000" />
+            </geometry>
+        </collision>
+        <visual name="prop_back_right_visual">
+            <origin xyz="-0.000000 -0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <box size="0.011007 0.160000 0.001000" />
+            </geometry>
+            <material name="prop_back_right_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="fixed" name="joint_cyl3_frame">
+        <axis xyz="0 0 1" />
+        <parent link="robot_base" />
+        <child link="cyl3_respondable" />
+        <origin xyz="-0.173203 -0.099996 2.010000" rpy="-3.141593 3.141593 2.617994" />
+    </joint>
+    <link name="cyl3_respondable">
+        <inertial>
+            <origin xyz="-0.000000 -0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="cyl3_respondable">
+            <origin xyz="-0.000000 -0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <cylinder length="0.02" radius="0.016" />
+            </geometry>
+        </collision>
+        <visual name="cyl3_visual">
+            <origin xyz="-0.000000 -0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <cylinder length="0.02" radius="0.016" />
+            </geometry>
+            <material name="cyl3_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="fixed" name="joint_cyl4_frame">
+        <axis xyz="0 0 1" />
+        <parent link="robot_base" />
+        <child link="cyl4_respondable" />
+        <origin xyz="0.000003 -0.199996 2.010000" rpy="-3.141593 3.141593 2.617994" />
+    </joint>
+    <link name="cyl4_respondable">
+        <inertial>
+            <origin xyz="0.000000 -0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="cyl4_respondable">
+            <origin xyz="0.000000 -0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <cylinder length="0.02" radius="0.016" />
+            </geometry>
+        </collision>
+        <visual name="cyl4_visual">
+            <origin xyz="0.000000 -0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <cylinder length="0.02" radius="0.016" />
+            </geometry>
+            <material name="cyl4_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="fixed" name="joint_cyl5_frame">
+        <axis xyz="0 0 1" />
+        <parent link="robot_base" />
+        <child link="cyl5_respondable" />
+        <origin xyz="0.173205 -0.100000 2.010000" rpy="-3.141593 3.141593 2.617994" />
+    </joint>
+    <link name="cyl5_respondable">
+        <inertial>
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="cyl5_respondable">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <cylinder length="0.02" radius="0.016" />
+            </geometry>
+        </collision>
+        <visual name="cyl5_visual">
+            <origin xyz="0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <cylinder length="0.02" radius="0.016" />
+            </geometry>
+            <material name="cyl5_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="fixed" name="joint_cyl6_frame">
+        <axis xyz="0 0 1" />
+        <parent link="robot_base" />
+        <child link="cyl6_respondable" />
+        <origin xyz="-0.173205 0.100000 2.010000" rpy="-3.141593 3.141593 2.617994" />
+    </joint>
+    <link name="cyl6_respondable">
+        <inertial>
+            <origin xyz="-0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <inertia iyy="0.0001" ixx="0.0001" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.0001" />
+            <mass value="0.0001" />
+        </inertial>
+        <collision name="cyl6_respondable">
+            <origin xyz="-0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <cylinder length="0.02" radius="0.016" />
+            </geometry>
+        </collision>
+        <visual name="cyl6_visual">
+            <origin xyz="-0.000000 0.000000 0.000000" rpy="-3.141593 3.141593 -3.141593" />
+            <geometry>
+                <cylinder length="0.02" radius="0.016" />
+            </geometry>
+            <material name="cyl6_visual_material">
+                <color rgba="1.000000 1.000000 1.000000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="revolute" name="Joint_1">
+        <axis xyz="0 0 1" />
+        <parent link="robot_base" />
+        <child link="Link_1" />
+        <origin xyz="0.000000 0.000000 2.000000" rpy="-1.570797 -0.000868 0.000000" />
+    <limit lower="-3.14159" upper="3.14159" effort="6.0" velocity="10.0" /><dynamics damping="0.05" friction="0.0" /></joint>
+    <link name="Link_1">
+        <inertial>
+            <origin xyz="0.000000 0.165000 0.000000" rpy="-1.570796 3.141593 -3.141593" />
+            <inertia iyy="0.0015" ixx="0.0015" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.000055" />
+            <mass value="0.166" />
+        </inertial>
+        <collision name="Link_1">
+            <origin xyz="0.000000 0.165000 0.000000" rpy="-1.570796 3.141593 -3.141593" />
+            <geometry>
+                <cylinder length="0.33" radius="0.02" />
+            </geometry>
+        </collision>
+        <visual name="Link_1">
+            <origin xyz="0.000000 0.165000 0.000000" rpy="-1.570796 3.141593 -3.141593" />
+            <geometry>
+                <cylinder length="0.33" radius="0.02" />
+            </geometry>
+            <material name="Link_1_material">
+                <color rgba="0.900000 0.900000 0.900000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="revolute" name="Joint_2">
+        <axis xyz="0 0 1" />
+        <parent link="Link_1" />
+        <child link="Link_2" />
+        <origin xyz="0.000000 0.330000 0.000000" rpy="0.000000 -0.000000 0.000003" />
+    <limit lower="-3.14159" upper="3.14159" effort="6.0" velocity="10.0" /><dynamics damping="0.05" friction="0.0" /></joint>
+    <link name="Link_2">
+        <inertial>
+            <origin xyz="0.000000 0.165000 0.000000" rpy="-1.570796 3.141593 -3.141593" />
+            <inertia iyy="0.0015" ixx="0.0015" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.000055" />
+            <mass value="0.166" />
+        </inertial>
+        <collision name="Link_2">
+            <origin xyz="0.000000 0.165000 0.000000" rpy="-1.570796 3.141593 -3.141593" />
+            <geometry>
+                <cylinder length="0.33" radius="0.02" />
+            </geometry>
+        </collision>
+        <visual name="Link_2">
+            <origin xyz="0.000000 0.165000 0.000000" rpy="-1.570796 3.141593 -3.141593" />
+            <geometry>
+                <cylinder length="0.33" radius="0.02" />
+            </geometry>
+            <material name="Link_2_material">
+                <color rgba="0.600000 0.600000 0.600000 1.0" />
+            </material>
+        </visual>
+    </link>
+    <joint type="revolute" name="Joint_3">
+        <axis xyz="0 0 1" />
+        <parent link="Link_2" />
+        <child link="Link_3" />
+        <origin xyz="0.000000 0.330000 0.000000" rpy="0.000000 -0.000000 0.000000" />
+    <limit lower="-3.14159" upper="3.14159" effort="6.0" velocity="10.0" /><dynamics damping="0.05" friction="0.0" /></joint>
+    <link name="Link_3">
+        <inertial>
+            <origin xyz="0.000000 0.165000 0.000000" rpy="-1.570796 3.141593 -3.141593" />
+            <inertia iyy="0.0015" ixx="0.0015" ixy="0.0" iyz="0.0" ixz="0.0" izz="0.000055" />
+            <mass value="0.166" />
+        </inertial>
+        <collision name="Link_3">
+            <origin xyz="0.000000 0.165000 0.000000" rpy="-1.570796 3.141593 -3.141593" />
+            <geometry>
+                <cylinder length="0.33" radius="0.02" />
+            </geometry>
+        </collision>
+        <visual name="Link_3">
+            <origin xyz="0.000000 0.165000 0.000000" rpy="-1.570796 3.141593 -3.141593" />
+            <geometry>
+                <cylinder length="0.33" radius="0.02" />
+            </geometry>
+            <material name="Link_3_material">
+                <color rgba="0.300000 0.300000 0.300000 1.0" />
+            </material>
+        </visual>
+    </link>
+<gazebo>
+    <plugin filename="libignition-gazebo-apply-link-wrench-system.so" name="ignition::gazebo::systems::ApplyLinkWrench" />
+    <plugin filename="libHexacopterRotorPlugin.so" name="hexacopter_control::HexacopterRotorPlugin">
+      <base_link>robot_base</base_link>
+      <thrust_coefficient>2.772e-5</thrust_coefficient>
+      <moment_coefficient>5.544e-7</moment_coefficient>
+      <max_omega>900.0</max_omega>
+    </plugin>
+  </gazebo>
+</robot>
