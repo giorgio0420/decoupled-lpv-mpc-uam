@@ -173,13 +173,6 @@ Outputs:
 Scenarios: `hover` (nothing moves — the baseline for telling a control fault from
 a tracking error), `nominal`, `fast`, `disturbance`.
 
-`hover_test.sh [omega] [seconds]` and `hover_watch.sh [omega] [seconds]` fly the
-six rotors open loop, at a fixed commanded speed, with no controller in the
-loop — the bench behind the "airframe exonerated" measurement in
-`INTERNALS.md` section 2. `hover_watch.sh` attaches the GUI so the climb can be
-watched directly; both default to `omega = 569.3 rad/s`, the modelled hover
-speed.
-
 ### 3.0 Seeing what it is doing
 
 The commanded pose is drawn in the world: a **green sphere** at the reference and
@@ -237,14 +230,6 @@ multi-run comparison should be read:
 ```bash
 python3 tools/iae.py run1=/tmp/run_1.csv run2=/tmp/run_2.csv run3=/tmp/run_3.csv
 ```
-
-`tools/` also has the scripts that isolated each defect in section 5 and
-`INTERNALS.md` — `depart.py` (departure vs. lag), `timeline.py` (where a run
-stops being good), `summary.py` (one row per run), `drift.py` / `envelope.py`
-(slow drift vs. growing oscillation), `hover_detail.py` / `why_active.py`
-(what the vehicle does with nothing commanded), `wrench.py` (commanded vs.
-realised wrench) and `prof.py` (tick timing). Each takes one or more
-`/tmp/trace.csv`-style paths and is documented in its own docstring.
 
 ### 3.3 Benches that need no simulator
 
@@ -629,7 +614,6 @@ not tried again.
 
 ```
 phase3.sh                     run a scenario in Gazebo (section 3)
-hover_test.sh, hover_watch.sh open-loop rotor/hover checks, no controller (section 3.0)
 
 src/uam_control/
   hover_node.py               the flight node: cascade, allocation, tracing
@@ -650,17 +634,13 @@ src/uam_control/
   cascade.py                  closed-loop eigenvalues
   rpi_check.py                the terminal RPI set: invariance, admissibility, non-emptiness
   table3.py                   regenerates section 1's table from collected traces
-  hold_torque.py, pred_vs_true.py, rot_law.py   smaller offline benches, one question each
   test/test_model.py          33 tests
   package.xml, setup.py, resource/   ament_python package
 
 src/hexacopter_sim/           XACRO model, launch file, ROS-Gazebo bridge parameters
 src/hexacopter_control/       the Gazebo rotor plugin and the allocation node (C++)
 
-tools/                        one question each, read a /tmp/trace.csv-style path
-  iae.py, depart.py, timeline.py, summary.py, drift.py, envelope.py,
-  hover_detail.py, why_active.py, wrench.py, onset.py, stalls.py, prof.py
-  ratio.sh, signtest.sh       Gazebo-side benches (arm free-fall ratio, open-loop sign check)
+tools/iae.py                  the paper's metric: IAE per axis and per joint
 
 README.md        this file
 INTERNALS.md      the defects, the method, and the traps
