@@ -6,7 +6,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 find_package(ament_cmake REQUIRED)
-find_package(Eigen3 REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(ignition-gazebo6 REQUIRED)
 find_package(ignition-plugin1 REQUIRED COMPONENTS register)
@@ -27,15 +26,9 @@ target_link_libraries(HexacopterRotorPlugin
 ament_target_dependencies(HexacopterRotorPlugin
   geometry_msgs nav_msgs rclcpp sensor_msgs std_msgs)
 
-add_executable(allocation_node src/allocation_node.cpp)
-target_compile_features(allocation_node PUBLIC cxx_std_17)
-target_link_libraries(allocation_node Eigen3::Eigen)
-ament_target_dependencies(allocation_node geometry_msgs rclcpp std_msgs)
-
-install(TARGETS HexacopterRotorPlugin allocation_node
+install(TARGETS HexacopterRotorPlugin
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME})
-install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 install(FILES model_plugin.sdf.inc README.md DESTINATION share/${PROJECT_NAME})
 
 ament_package()

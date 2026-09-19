@@ -125,15 +125,10 @@ def test_rotational_lpv_matches_the_plant():
         # derivative leaves an O(dt) remainder, so the tolerance has to sit
         # above dt rather than at machine precision.
         dt = 1e-4
-        # Six states, [phi, theta, psi, p, q, r]. Only the rate block is compared:
-        # the attitude rows are the kinematics eta_dot = omega, which is a
-        # modelling choice rather than a claim about the plant, and comparing them
-        # against the truth model would be checking the small-angle approximation
-        # instead of the dynamics.
+        # Literal 3-state, [p, q, r] (Eq. 22-23).
         A, B = rotational_lpv(coupling, state.body_rate, dt)
-        full = np.concatenate([state.attitude, state.body_rate])
         predicted = (
-            (A @ full + B @ (torque + coupling.tau_bar))[3:] - state.body_rate
+            A @ state.body_rate + B @ (torque + coupling.tau_bar) - state.body_rate
         ) / dt
         assert predicted == pytest.approx(exact.body_rate_dot, rel=1e-2, abs=1e-4)
 

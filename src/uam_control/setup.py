@@ -22,7 +22,6 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "control_node = uam_control.control_node:main",
             "simulate = uam_control.simulate:main",
         ],
     },

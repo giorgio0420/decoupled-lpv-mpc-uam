@@ -105,7 +105,7 @@ source install/setup.bash
 - `hexacopter_sim` — the XACRO model, the launch file, the ROS–Gazebo bridge
   parameters
 - `hexacopter_control` — the C++ Gazebo system plugin that turns rotor speeds
-  into forces and torques, plus an allocation node
+  into forces and torques
 - `uam_control` — everything else: the dynamics, the three controllers, the
   trajectories, the flight node
 
@@ -337,16 +337,44 @@ does not transfer.
 | stage | paper | here |
 |---|---|---|
 | translational | constrained linear MPC, Eq. (13)–(18) | PD, bandwidth 1.5 rad/s |
-| rotational | tube LPV-MPC, Eq. (22)–(38) | as the paper |
+| rotational | tube LPV-MPC, Eq. (22)–(38), 3-state `x_eta = [p, q, r]` | as the paper |
 | manipulator | tube LPV-MPC, Eq. (39)–(48) | as the paper |
 
+The rotational stage was a 6-state variant (attitude folded in) for a while,
+which tracked tilt tighter but is not what Eq. (22)-(23) print. Reverted for
+paper-fidelity; see the note in `coupling.rotational_lpv` if the tilt-overshoot
+regression that motivated the 6-state version resurfaces.
+
 `TranslationalMPC` implements the paper's stage and is wired in behind
-`UAM_TRANS_MPC=1`, but it is **worse** — 3.5 to 135 m against the PD's 0.2 — and
-it fails specifically on altitude, IAE z going from 1.4 to 377. That points at the
-gravity bookkeeping between Eq. (13) and Eq. (14), where the optimiser works in
-net force and the interface expects `u_z + m g`, or at integral windup in the
-augmented state of Eq. (16), which has no anti-windup and an eight-step horizon.
-It is kept with its numbers so the next attempt starts from the altitude channel.
+`UAM_TRANS_MPC=1` (offline in `simulate.py` too now, not just `hover_node.py`),
+but it is still **worse** than the PD. One real bug was found and fixed: the
+QP's decision variable is a force *increment*, and only the increment was
+bounded — the actuator's absolute limit was invisible to the optimiser, which
+planned against unlimited cumulative authority and only met the real ceiling
+once the caller clipped the realised force after the fact. Fixed by bounding
+the running sum of the increment directly in the QP (`solve_mpc`'s
+`cumulative_bounds`).
+
+It did not fix the symptom. Measured on `nominal`, offline:
+
+* Pure `hover` (constant, zero reference): perfect, IAE 0 on every axis.
+* Any moving reference: phi/theta IAE around 11 rad·s, roll and pitch reference
+  growing from a few hundredths of a radian to the 0.6 rad tilt clamp over
+  about two seconds, then oscillating there for the rest of the run.
+* That figure did not move with `R_zeta_gain` (0.1 to 200), `N_zeta` (8 to 60),
+  the terminal weight scale (1x to 500x Q), a nonzero target for the augmented
+  state's `Delta x_m` block instead of zero, a lighter weight on that same
+  block, or disabling the arm's reaction feedback into `attitude_reference`.
+  None of the usual MPC knobs touch it.
+
+So the fault is not tuning and not the arm coupling; it is specific to
+*tracking a moving reference* versus holding a fixed one, and it survives
+retuning the stage cost in every direction tried. The augmented model's own
+matrix has all twelve eigenvalues at exactly 1.0 (no resonant mode to explain
+the ~1.2-1.5 s oscillation period), so the cause is in the closed loop the
+receding-horizon replanning forms with the plant, not in the open-loop model.
+Next step is instrumenting a single QP solve near the onset (t ~ 0.5-1.5 s on
+`nominal`) rather than more parameter sweeps.
 
 ### 4.5 What has no counterpart in the paper
 
@@ -570,14 +598,16 @@ the comparison to mean something, which they were not two days ago.
 
 Done
 
-**2. Put the attitude in a constraint set.** The rotational MPC's state is the body
-rate alone, three states, so the attitude belongs to no set and Eq. (36) cannot
-touch it. `LIMITS.tilt` caps the *commanded* tilt at 0.6 rad and never binds —
-measured demand peaks at 0.445 on `fast`, zero samples at the cap — while the
-*achieved* attitude overshoots the command by about 70 % and once reached 1.5 rad
-unopposed. A six-state rotational model `[angles, rates]` with the tilt in the box
-is what the paper's Eq. (22) actually describes, and it is the honest fix for the
-last failure mode still visible.
+**2. Put the attitude in a constraint set -- tried, and reverted.** A six-state
+rotational model `[angles, rates]` with the tilt in the box was built: it tracked
+tilt tighter (achieved attitude no longer overshot the command by 70 %), but
+Eq. (22)-(23) print the state as `x_eta = [p, q, r]`, three components, not six
+-- so it was not what the paper describes, the opposite of what this item
+originally claimed. Reverted to the literal 3-state model for paper-fidelity;
+if the 70 % overshoot on `fast` resurfaces, the 6-state variant is recorded in
+`coupling.rotational_lpv`'s history and `rpi_check.py` now shows the 3-state
+terminal set has *more* room (4.4 % of the box vs. 0.66 %), so the tradeoff is
+no longer as one-sided as it looked the first time.
 
 **3. The terminal RPI set.** Theorem 1's guarantee needs it. Computing a maximal
 RPI set for the tightened system is a standard offline iteration and would make
@@ -626,7 +656,6 @@ src/uam_control/
     mpc.py                    QP, LQR, Riccati, tube sets, box constraints
     trajectory.py             Section V's four scenarios
     plant.py, simulate.py     the offline plant and driver
-    control_node.py           ROS 2 node wrapper (rclpy)
   derive_dynamics.py          SymPy: runs our recursion symbolically, writes the closed form
   test_generated.py           the gate: closed form vs recursion, 1e-15
   check_swap.py               the gate: fast path vs probing path, 1e-7
@@ -638,7 +667,7 @@ src/uam_control/
   package.xml, setup.py, resource/   ament_python package
 
 src/hexacopter_sim/           XACRO model, launch file, ROS-Gazebo bridge parameters
-src/hexacopter_control/       the Gazebo rotor plugin and the allocation node (C++)
+src/hexacopter_control/       the Gazebo rotor plugin (C++)
 
 tools/iae.py                  the paper's metric: IAE per axis and per joint
 

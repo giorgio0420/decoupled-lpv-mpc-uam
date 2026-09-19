@@ -703,52 +703,26 @@ class HoverNode(Node):
                                        roll=0.0, pitch=0.0)
 
         self._prof['posizione'] += time.perf_counter() - _t
-        # The attitude reference goes straight into the MPC, which now carries
-        # [phi, theta, psi, p, q, r] as its state.
-        #
-        # The proportional stage that used to sit here -- attitude error into a
-        # commanded body rate, then the MPC on the rate -- is gone, and with it
-        # ATTITUDE_GAIN. That gain existed because the optimiser could not see
-        # the attitude, so something had to translate a pointing command into a
-        # rate one. Now the optimiser regulates the attitude directly, over the
-        # whole horizon, and against a tightened set that the tilt belongs to.
-        #
-        # It also removes a tuning knob that was measured on a cliff: 4.0 worked,
-        # 6.0 was better and bimodal, 9.0 diverged. What replaces it is the
-        # weight ratio in `Q_eta`, which the optimiser trades against the input
-        # cost rather than applying blindly.
-        #
-        # Zero rate reference: the command is a pose to hold, not a rotation to
-        # perform. Where the trajectory really does want the vehicle turning, the
-        # attitude reference moving along the horizon is what expresses it, and
-        # this is where that would be built.
-        attitude_target = np.array([target.roll, target.pitch,
-                                    self.yaw_reference])
-        rate_target = np.zeros(3)
-        # Named apart from the translational `reference`, which is still live at
-        # this point and is what the trace logs against. Reusing the name shadowed
-        # it and the trace compared position to an attitude command -- ref_z read
-        # 0.00 while the vehicle held 12.0 m, which looks exactly like a broken
-        # altitude loop and is not one.
-        attitude_horizon = np.tile(
-            np.concatenate([attitude_target, rate_target]), (CONTROL.N_eta, 1))
+        # Literal 3-state MPC (Eq. 22-23): the optimiser regulates body rate
+        # only, not attitude, so the pointing command has to be turned into a
+        # rate reference up here, same as the ERTF baseline already does below
+        # with `attitude_rate_command` -- the SO(3) error, not the Euler one
+        # that annihilates the pitch command at roll = +/-pi/2 (see that
+        # function's docstring for the crash this avoids).
         _t = time.perf_counter()
         joint_state_full = np.concatenate([self.joints, self.joint_rates])
+        # Both schemes are rate controllers now, so both need the SO(3) error
+        # turned into a body-rate command up here.
+        rate_command = attitude_rate_command(
+            self.attitude, target.roll, target.pitch, self.yaw_reference,
+            ATTITUDE_GAIN)
         if self.use_ertf:
-            # The baseline is a rate controller, so it still needs the
-            # proportional stage the six-state MPC made redundant. Kept here
-            # rather than deleted for exactly this reason: the comparison has to
-            # give each scheme the interface it was designed for, or it measures
-            # the interface instead of the scheme.
-            baseline_rate = attitude_rate_command(
-                self.attitude, target.roll, target.pitch, self.yaw_reference,
-                ATTITUDE_GAIN)
             torque = self.baseline.rotational(
-                self.body_rate, baseline_rate, joint_state_full,
+                self.body_rate, rate_command, joint_state_full,
                 arm_acceleration, target.thrust, self._current_dt)
         else:
-            torque = self.rotational(self.attitude, self.body_rate,
-                                     attitude_horizon, self.coupling)
+            rate_horizon = np.tile(rate_command, (CONTROL.N_eta, 1))
+            torque = self.rotational(self.body_rate, rate_horizon, self.coupling)
 
         self._prof['rotazionale'] += time.perf_counter() - _t
         # Thrust first, torque scaled to whatever is left.
@@ -826,7 +800,7 @@ class HoverNode(Node):
         self._log_target = np.array([target.roll, target.pitch])
         self._log_torque = torque.copy()
         self._log_scale = scale_rp
-        self._log_rate_target = rate_target.copy()
+        self._log_rate_target = rate_command.copy()
         # What the rotors will actually produce, from the speeds about to be
         # published, against what was asked for. `fit` preserves the direction of
         # the torque but gives up its magnitude, and the final clip at zero can
@@ -835,7 +809,7 @@ class HoverNode(Node):
         # matrix the command was built from, so any difference is the fitting and
         # the clipping alone -- not a modelling disagreement.
         realised = ROTORS.allocation_matrix() @ (omega ** 2)
-        self._log_extra = (target.pitch, rate_target[1], torque[1], scale_rp,
+        self._log_extra = (target.pitch, rate_command[1], torque[1], scale_rp,
                            omega.min(), target.thrust, force[0], force[2],
                            realised[2], realised[0], realised[1])
         self._log_reference = reference[0][[0, 2, 4]]

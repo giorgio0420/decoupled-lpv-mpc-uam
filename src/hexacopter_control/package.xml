@@ -2,7 +2,7 @@
 <package format="3">
   <name>hexacopter_control</name>
   <version>0.1.0</version>
-  <description>Rotor dynamics System plugin and control allocation for the hexacopter.</description>
+  <description>Rotor dynamics System plugin for the hexacopter.</description>
   <maintainer email="giorgio@example.com">giorgio</maintainer>
   <license>Apache-2.0</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
@@ -11,6 +11,5 @@
   <depend>std_msgs</depend>
   <build_depend>ignition-gazebo6</build_depend>
   <build_depend>ignition-plugin1</build_depend>
-  <depend>eigen</depend>
   <export><build_type>ament_cmake</build_type></export>
 </package>

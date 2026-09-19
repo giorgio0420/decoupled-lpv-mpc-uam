@@ -125,12 +125,25 @@ def solve_mpc(
     P: np.ndarray,
     state_bounds: list[BoxConstraint],
     input_bounds: list[BoxConstraint],
+    cumulative_bounds: list[BoxConstraint] | None = None,
+    cumulative_baseline: np.ndarray | None = None,
 ) -> np.ndarray:
     """Solve the receding-horizon problem and return the whole input sequence.
 
     `reference` is the target for every predicted state, shape (horizon, n).
     `state_bounds` and `input_bounds` hold one box per prediction step, which is
     what lets the tightened sets of Eq. (36) shrink along the horizon.
+
+    `cumulative_bounds`, with `cumulative_baseline`, bounds
+    `cumulative_baseline + sum(u[0..i])` at each step -- the *absolute* value of
+    a decision variable that is itself an increment, `input_bounds` only caps
+    the increment's own size. Used by the velocity-form translational MPC,
+    whose decision variable is a force increment: without this the QP plans
+    against an actuator it believes has unlimited cumulative authority and only
+    meets the real ceiling once the caller clips the realised input, which is
+    where the mismatch between planned and applied force turns into a limit
+    cycle. Left `None` for controllers whose decision variable is already the
+    absolute input.
     """
     horizon = len(A)
     n, m = A[0].shape[0], B[0].shape[1]
@@ -181,11 +194,24 @@ def solve_mpc(
             "no longer physical"
         )
 
-    constraint = sparse.vstack(
-        [sparse.eye(m * horizon, format="csc"), sparse.csc_matrix(Gamma)], format="csc"
-    )
-    lower = np.concatenate([input_lo, state_lo])
-    upper = np.concatenate([input_hi, state_hi])
+    blocks = [sparse.eye(m * horizon, format="csc"), sparse.csc_matrix(Gamma)]
+    lower_blocks = [input_lo, state_lo]
+    upper_blocks = [input_hi, state_hi]
+
+    if cumulative_bounds is not None:
+        running_sum = sparse.csc_matrix(
+            np.kron(np.tril(np.ones((horizon, horizon))), np.eye(m))
+        )
+        baseline = np.tile(np.asarray(cumulative_baseline, dtype=float), horizon)
+        cumulative_lo = np.concatenate([b.lower for b in cumulative_bounds]) - baseline
+        cumulative_hi = np.concatenate([b.upper for b in cumulative_bounds]) - baseline
+        blocks.append(running_sum)
+        lower_blocks.append(cumulative_lo)
+        upper_blocks.append(cumulative_hi)
+
+    constraint = sparse.vstack(blocks, format="csc")
+    lower = np.concatenate(lower_blocks)
+    upper = np.concatenate(upper_blocks)
 
     problem = osqp.OSQP()
     problem.setup(

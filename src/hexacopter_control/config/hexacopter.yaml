@@ -1,6 +1,0 @@
-allocation_node:
-  ros__parameters:
-    # Initial values only. Identify these with a static-thrust test before closed-loop flight.
-    thrust_coefficient: 2.772e-5
-    moment_coefficient: 5.544e-7
-    max_omega: 900.0

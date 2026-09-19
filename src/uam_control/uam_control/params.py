@@ -242,14 +242,12 @@ class ControllerParams:
     # Note that 0.9782, not the 0.9149 recorded earlier. That figure was computed
     # on a three-state model which omits the direct torque-to-angle feedthrough
     # within a step, and on an attitude gain of 2.0 rather than the 4.0 actually
-    # flown. The six-state model is the more complete one and it puts the flying
-    # configuration closer to the edge than was thought.
-    Q_eta_angle_gain: float = 100.0
+    # flown. The six-state model was more complete and put the flying
+    # configuration closer to the edge than was thought -- reverted to literal
+    # 3-state (Eq. 22-23), so that margin is not re-measured here.
 
     def Q_eta(self) -> np.ndarray:
-        return np.diag(
-            [self.Q_eta_angle_gain] * 3 + [self.Q_eta_gain] * 3
-        )
+        return self.Q_eta_gain * np.eye(3)
 
     def R_eta(self) -> np.ndarray:
         return self.R_eta_gain * np.eye(3)

@@ -31,6 +31,7 @@ numerical precision.
 from __future__ import annotations
 
 import argparse
+import os
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -41,6 +42,7 @@ from .controllers import (
     ManipulatorTubeMPC,
     RotationalTubeMPC,
     PositionPD,
+    TranslationalMPC,
     attitude_reference,
     euler_rate_to_body_rate,
 )
@@ -109,7 +111,14 @@ def run(
     state.velocity = np.array([start[1], start[3], start[5]])
     trace = Trace()
 
-    translational = PositionPD()
+    # UAM_TRANS_MPC=1 mirrors the switch already wired in hover_node.py, so the
+    # paper's own translational stage (Eq. 13-18) can be reproduced offline,
+    # where a run costs seconds instead of a Gazebo session.
+    translational = (
+        TranslationalMPC(mass=TOTAL_MASS)
+        if os.environ.get("UAM_TRANS_MPC") == "1"
+        else PositionPD()
+    )
     use_lpv = controller == "lpv"
     rotational = RotationalTubeMPC() if use_lpv else None
     manipulator = ManipulatorTubeMPC() if use_lpv else None
@@ -183,21 +192,17 @@ def run(
         # Algorithm 1, steps 5-8: the two tube-based controllers.
         if step % fast_every == 0:
           try:
-              # Six states now: the attitude to hold with zero rate, not a rate
-              # to chase. `body_rate_target` came from the proportional stage
-              # that the six-state model replaces, so what the reference carries
-              # is the commanded attitude itself.
-              rate_reference = np.tile(
-                  np.array([attitude_target.roll, attitude_target.pitch,
-                            0.0, 0.0, 0.0, 0.0]),
-                  (CONTROL.N_eta, 1))
+              # Step 4: the body-rate reference the rotational loop tracks,
+              # xr_eta = [pr, qr, rr] of Eq. (22). Held from the last
+              # translational update, same as the ERTF baseline's.
+              rate_reference = np.tile(body_rate_target, (CONTROL.N_eta, 1))
               joint_target = horizon_reference(
                   joint_reference, scenario, t, CONTROL.N_gamma, CONTROL.dt_gamma
               )
 
               if use_lpv:
                   uav_torque = rotational(
-                      state.attitude, state.body_rate, rate_reference, coupling)
+                      state.body_rate, rate_reference, coupling)
                   # Schedule the arm on the angular acceleration the rotational
                   # loop has just committed to, not on the lagged measurement.
                   joint_torque = manipulator(

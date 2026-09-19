@@ -102,7 +102,7 @@ def main():
 
     rotational = RotationalTubeMPC()
     A, B = rotational_lpv(rest_coupling(), np.zeros(3), rotational.dt)
-    first = report('rotazionale, sei stati', A, B, rotational,
+    first = report('rotazionale, tre stati', A, B, rotational,
                    rotational.state_box, rotational.input_box)
 
     manipulator = ManipulatorTubeMPC()

@@ -272,6 +272,19 @@ class TranslationalMPC:
         # velocity-form model.
         self.input_bounds = [BoxConstraint.symmetric(np.full(3, 25.0))] * self.horizon
 
+        # The actuator's *absolute* bound, on the cumulative sum of the
+        # increment decision variable -- see `solve_mpc`'s `cumulative_bounds`.
+        # Net force pre-gravity: symmetric on x, y; on z, the rotors' [force_z_min,
+        # force_z_max] range shifted by the weight this controller will add back.
+        weight = self.mass * GRAVITY
+        absolute = BoxConstraint(
+            lower=np.array([-LIMITS.force_xy, -LIMITS.force_xy,
+                             LIMITS.force_z_min - weight]),
+            upper=np.array([LIMITS.force_xy, LIMITS.force_xy,
+                             LIMITS.force_z_max - weight]),
+        )
+        self.cumulative_bounds = [absolute] * self.horizon
+
     @staticmethod
     def _plant_lower() -> np.ndarray:
         return np.array(
@@ -315,9 +328,14 @@ class TranslationalMPC:
             self.P,
             self.state_bounds,
             self.input_bounds,
+            self.cumulative_bounds,
+            self._previous_input,
         )[0]
 
         self._previous_state = plant_state.copy()
+        # The QP now plans against the same absolute ceiling this applies, so
+        # the clip below is a numerical safety net, not where the actuator
+        # limit is actually enforced.
         self._previous_input = np.clip(
             self._previous_input + delta_u, -LIMITS.force_xy, LIMITS.force_xy
         )
@@ -411,7 +429,15 @@ def attitude_reference(
 
 
 class RotationalTubeMPC:
-    """Tube-based LPV-MPC of Eq. (22)-(38).
+    """Tube-based LPV-MPC of Eq. (22)-(38), literal 3-state per the paper.
+
+    State x_eta = [p, q, r]; the attitude itself is not in the model, matching
+    Eq. (22)-(23) exactly. It is regulated one layer up: the caller converts an
+    attitude error into a body-rate reference xr_eta = [pr, qr, rr] (Algorithm 1
+    step 4, via Eq. 2) before calling this. A 6-state variant that folded the
+    attitude kinematics into this same model was tried and measurably tracked
+    tilt tighter -- see the note in `coupling.rotational_lpv` -- but is not what
+    Eq. (22)-(23) print, so it is not what runs here.
 
     The feedback gain K_eta and the terminal cost are computed once, offline, at
     the hover operating point, exactly as Algorithm 1 prescribes. The LPV
@@ -425,10 +451,7 @@ class RotationalTubeMPC:
         self.Q = CONTROL.Q_eta()
         self.R = CONTROL.R_eta()
 
-        # Offline design point: hover, arm at rest, no rotation. Six states now,
-        # so the design point is built from the same LPV routine the loop uses
-        # rather than written out by hand -- the hand-written 3x3 pair was easy
-        # to keep consistent and a 6x6 one would not be.
+        # Offline design point: hover, arm at rest, no rotation.
         rest = CrossCoupling(
             M_d=np.zeros((3, 3)), M_c=np.zeros((3, 3)), M_s=np.zeros((3, 3)),
             M_l=np.zeros((3, 3)), tau_bar=np.zeros(3), M_f=np.zeros(3),
@@ -440,18 +463,11 @@ class RotationalTubeMPC:
             gain=self.gain,
             relative=LPV.relative,
             absolute=LPV.absolute_eta,
-            state_margin=np.concatenate([np.full(3, 0.15), np.full(3, 0.5)]),
+            state_margin=np.full(3, 0.5),
             input_margin=np.full(3, 1.0),
         )
 
-        # The attitude is finally in the box, which is the whole point of the
-        # six-state model: Eq. (36) can now shrink a set the tilt belongs to.
-        # Yaw gets the full turn -- it is regulated, not limited, and a box that
-        # clipped it would make a reference near +pi unreachable.
-        self.state_box = BoxConstraint.symmetric(np.concatenate([
-            [LIMITS.tilt, LIMITS.tilt, np.pi],
-            np.full(3, LIMITS.body_rate),
-        ]))
+        self.state_box = BoxConstraint.symmetric(np.full(3, LIMITS.body_rate))
         self.input_box = BoxConstraint.symmetric(LIMITS.torque_vector())
         self.nominal_state: np.ndarray | None = None
         self._previous_input = np.zeros(3)
@@ -468,7 +484,7 @@ class RotationalTubeMPC:
         # condition Proposition 1 turns on, and the 75 % tightening cap otherwise
         # hides an empty set behind visible saturation.
         self.terminal_rpi = self.tube.minimal_rpi(
-            nominal, nominal_input, np.zeros(6), np.zeros(3), self.horizon
+            nominal, nominal_input, np.zeros(3), np.zeros(3), self.horizon
         )
         self.terminal_feasible = Tube.terminal_is_feasible(
             self.state_box, self.terminal_rpi
@@ -476,33 +492,21 @@ class RotationalTubeMPC:
 
     def __call__(
         self,
-        attitude: np.ndarray,
         body_rate: np.ndarray,
         reference: np.ndarray,
         coupling: CrossCoupling,
     ) -> np.ndarray:
         """Return the UAV torque vector [tau_x, tau_y, tau_z].
 
-        `attitude` is [phi, theta, psi] and `body_rate` is [p, q, r]; together
-        they are the six-state vector this now regulates. `reference` is the
-        desired state at each prediction step, shape (N_eta, 6) -- the attitude
-        to hold and the rate to hold it at, which for a pointing command is the
-        attitude reference with zero rates.
+        `body_rate` is [p, q, r], the state this regulates. `reference` is the
+        desired body rate at each prediction step, shape (N_eta, 3).
 
         The residual reaction torque tau_bar of Eq. (10) enters the model as part
         of the input, so it is subtracted from the optimal input to recover the
         torque the rotors must actually produce.
-
-        The yaw error is wrapped into the half turn around the measurement before
-        anything else sees it. These are angles on a circle and the model is
-        linear: an attitude sitting near +pi against a reference near -pi is a
-        few hundredths of a radian apart physically and 2 pi apart arithmetically,
-        and the optimiser would answer the arithmetic.
         """
-        state = np.concatenate([attitude, body_rate])
-        reference = np.atleast_2d(reference).copy()
-        reference[:, :3] = state[:3] + (
-            (reference[:, :3] - state[:3] + np.pi) % (2 * np.pi) - np.pi)
+        state = np.asarray(body_rate, dtype=float)
+        reference = np.atleast_2d(reference)
 
         A, B = rotational_lpv(coupling, body_rate, self.dt)
 
@@ -590,7 +594,7 @@ class RotationalTubeMPC:
         # aircraft that is not there.
         reachable = LIMITS.torque_vector() / np.diag(UAV.inertia_tensor())
         self.predicted_body_rate_dot = np.clip(
-            ((A @ state + B @ realised)[3:] - body_rate) / self.dt,
+            (A @ state + B @ realised - body_rate) / self.dt,
             -reachable, reachable,
         )
         return torque

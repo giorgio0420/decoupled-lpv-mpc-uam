@@ -304,36 +304,13 @@ def rotational_lpv(
 
     A_rate, B_rate = zero_order_hold(P1, P2, dt)
 
-    # Six states, [phi, theta, psi, p, q, r], not three.
-    #
-    # With the rate alone as the state, the attitude belonged to no constraint
-    # set, so Eq. (36) could not touch it: `LIMITS.tilt` capped the tilt that was
-    # *commanded* and nothing bounded the tilt that was *reached*. Measured, the
-    # achieved pitch overshot the command by about 70 % on the `fast` scenario.
-    # Tightening a set the variable is not in cannot help, and no choice of
-    # weights repairs that -- the variable has to be in the model.
-    #
-    # The kinematics is linearised about level, eta_dot = omega, rather than
-    # carried as the full B_T_I^-1. That map is what made the old attitude
-    # command annihilate itself at roll = pi/2 (its pitch row carries a factor of
-    # cos(roll)), and transplanting the same degeneracy into the *model* would
-    # put it where the optimiser can no longer be watched. At the attitudes this
-    # aircraft flies -- peak commanded tilt 0.445 rad on the hardest scenario --
-    # the small-angle map is accurate to better than 5 %, and what is wanted here
-    # is a set the tube can shrink, not a kinematically exact prediction.
-    #
-    # The scheduling and the reaction terms are untouched: they live in the rate
-    # block, which is where Eq. (10) writes them.
-    A = np.eye(6)
-    A[:3, 3:] = dt * np.eye(3)
-    A[3:, 3:] = A_rate
-    B = np.zeros((6, 3))
-    # Half a step of rate change also moves the angle within the same interval;
-    # dropping it makes the discretisation first-order in the coupling term and
-    # the horizon predicts an attitude that lags its own rate.
-    B[:3, :] = 0.5 * dt * B_rate
-    B[3:, :] = B_rate
-    return A, B
+    # Literal 3-state, [p, q, r], as Eq. (22)-(23) print it. A 6-state variant
+    # (attitude folded into this same model) was tried to put the tilt itself
+    # inside the tube's constraint set: state-only tilt capping let the achieved
+    # pitch overshoot the command by about 70 % on the `fast` scenario, since
+    # nothing bounded the tilt that was actually *reached*. Reverted for
+    # paper-fidelity; if that overshoot resurfaces, that is where to look.
+    return A_rate, B_rate
 
 
 def manipulator_lpv(
