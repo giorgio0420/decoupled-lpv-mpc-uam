@@ -22,6 +22,12 @@ WS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source /opt/ros/humble/setup.bash
 source "${WS_DIR}/install/setup.bash"
 export IGN_GAZEBO_SYSTEM_PLUGIN_PATH="${WS_DIR}/install/hexacopter_control/lib:${IGN_GAZEBO_SYSTEM_PLUGIN_PATH}"
+# Table II's dt_eta (0.025 s) is simulate.py's default and it is right there --
+# no wall clock to miss. Live here it is not: measured tick_ms median 25.5,
+# p95 41.4, max 107.7 against the 25 ms period. 0.05 s is the rate this
+# Python/OSQP controller can actually hold; override with UAM_DT_ETA=0.025 to
+# reproduce the real-time miss for yourself.
+export UAM_DT_ETA="${UAM_DT_ETA:-0.05}"
 # Software rendering by default, hardware when UAM_GPU=1.
 #
 # This is not a choice about whether the window appears -- it appears either way.

@@ -165,7 +165,14 @@ class ControllerParams:
     # loops from running at the paper's own rate. dt_zeta stays at 0.05 s, its
     # own Table II value.
     dt_zeta: float = 0.05
-    dt_eta: float = 0.025
+    # 0.025 s (Table II) by default -- right for `simulate.py`, which has no
+    # wall-clock budget to miss. Measured live in Gazebo (2026-09-20, WSL2,
+    # this Python/OSQP controller): tick_ms median 25.5, p95 41.4, max 107.7
+    # against the 25 ms period -- the median alone already eats the whole
+    # budget, so "marginal" above was optimistic. `phase3.sh` overrides this to
+    # 0.05 via UAM_DT_ETA for exactly that reason; raise it back to 0.025 only
+    # once the controller is fast enough to actually hit that rate.
+    dt_eta: float = float(os.environ.get("UAM_DT_ETA", 0.025))
     # Table II says 0.025 here too. Tried it: manipulator tracking regresses
     # hard (nominal theta IAE 0.20 -> 1.63, q2 0.20 -> 7.55) despite every
     # weight already matching the table (Q_gamma, R_gamma, P_gamma, N_gamma).

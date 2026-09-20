@@ -382,10 +382,14 @@ not come through `pdftotext`/`pdfplumber`, only its header):
 * `dt_eta` was 0.05 s here; Table II gives 0.025 s. The code had read this as
   Table II's "0.01 s" from memory (100 Hz) and found that genuinely infeasible
   -- a ~23-45 ms Python/OSQP tick against a 10 ms budget -- so it gave up on
-  multi-rate entirely and ran every stage at 0.05 s. 0.025 s (40 Hz) is a
-  different, much closer target: marginal but not obviously impossible for a
-  live Gazebo loop, and offline `simulate.py` has no wall-clock budget to miss
-  in the first place.
+  multi-rate entirely and ran every stage at 0.05 s. 0.025 s (40 Hz) looked like
+  a closer, marginal target offline. Measured live instead (2026-09-20, WSL2):
+  tick_ms median 25.5, p95 41.4, max 107.7 against the 25 ms period -- the
+  median alone already spends the whole budget, so "marginal" was optimistic.
+  `dt_eta` is env-overridable now (`UAM_DT_ETA`), defaulting to Table II's
+  0.025 s for `simulate.py` (no wall clock to miss there) and overridden to
+  0.05 s by `phase3.sh` for the reason above. Raise it back only once the
+  controller is fast enough to actually hold 40 Hz.
 * `R_eta_gain` was 0.3, a detune measured against the wrong `dt_eta`. Table II
   says 0.01, and that value was already the better one in the measurement that
   justified 0.3 -- it just wasn't re-checked once the sampling time it was
