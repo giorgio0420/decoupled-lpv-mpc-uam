@@ -321,7 +321,7 @@ class HoverNode(Node):
             'omega_min,thrust,vx,force_x,force_z,fbar_x,'
             'q0,q1,q2,qref0,qref1,qref2,'
             'tau_y_real,thrust_real,tau_x_real,tau_x,wall,sim,tick_ms,'
-            'roll,roll_cmd,p_meas,p_cmd\n')
+            'roll,roll_cmd,p_meas,p_cmd,yaw,yaw_cmd\n')
         self.get_logger().info(f'holding {self.target}')
 
     def on_odom(self, m):
@@ -933,6 +933,7 @@ class HoverNode(Node):
             time.perf_counter() - self._wall0, self.odom_stamp,
             1000.0 * (time.perf_counter() - tick_t0),
             self.attitude[0], roll_cmd, self.body_rate[0], p_cmd,
+            self.attitude[2], self.yaw_reference,
         )
         _t = time.perf_counter()
         self._trace.write(",".join("%.5f" % v for v in row) + "\n")
