@@ -3,12 +3,9 @@
 ROS 2 / Gazebo simulation of a hexarotor carrying a 3-link arm, after
 Eskandarpour et al., *Decoupled Dynamic Modeling by Decomposing the
 Cross-Coupled Dynamics and Tube-Based LPV-MPC Control Scheme for Aerial
-Manipulation*, IEEE TAES 61(5), 2025. Two control schemes, three scenarios
-(`nominal`, `fast`, `disturbance`), visualized live in Gazebo.
-
-- **3MPC** — translational + rotational + arm, all tube-based LPV-MPC
-- **PD + 2MPC / ERTF** — PD position loop, ERTF attitude/arm baseline (the
-  paper's comparison baseline)
+Manipulation*, IEEE TAES 61(5), 2025. Tube-based LPV-MPC (3 MPCs:
+translational, rotational, arm) against a PD + ERTF baseline, across two
+scenarios (`nominal`, `fast`), visualized live in Gazebo.
 
 ## Run it
 
@@ -29,16 +26,13 @@ source install/setup.bash
 UAM_SCENARIO=nominal bash phase3.sh 95 true
 ```
 
-Scenarios: `hover`, `nominal`, `fast`, `disturbance`. Scheme switches:
+Scenarios: `hover`, `nominal`, `fast`. Scheme switches:
 
 | variable | default | what it does |
 |---|---|---|
 | `UAM_SCENARIO` | `nominal` | which reference to fly |
 | `UAM_TRANS_MPC` | `0` | `1` = 3MPC (translational MPC instead of PD) |
 | `UAM_USE_ERTF` | `0` | `1` = PD + ERTF baseline instead of the tube MPCs |
-| `UAM_GUI` | `1` | `0` = headless (faster; attach later with `ign gazebo -g`) |
-
-The green sphere is the reference, the blue trail is where it has been.
 
 Output: `/tmp/trace.csv`. Read it with:
 
