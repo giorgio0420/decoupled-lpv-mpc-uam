@@ -320,7 +320,8 @@ class HoverNode(Node):
             'pitch,pitch_cmd,q_cmd,q_meas,tau_y,sfit,'
             'omega_min,thrust,vx,force_x,force_z,fbar_x,'
             'q0,q1,q2,qref0,qref1,qref2,'
-            'tau_y_real,thrust_real,tau_x_real,tau_x,wall,sim,tick_ms\n')
+            'tau_y_real,thrust_real,tau_x_real,tau_x,wall,sim,tick_ms,'
+            'roll,roll_cmd,p_meas,p_cmd\n')
         self.get_logger().info(f'holding {self.target}')
 
     def on_odom(self, m):
@@ -811,7 +812,8 @@ class HoverNode(Node):
         realised = ROTORS.allocation_matrix() @ (omega ** 2)
         self._log_extra = (target.pitch, rate_command[1], torque[1], scale_rp,
                            omega.min(), target.thrust, force[0], force[2],
-                           realised[2], realised[0], realised[1])
+                           realised[2], realised[0], realised[1],
+                           target.roll, rate_command[0])
         self._log_reference = reference[0][[0, 2, 4]]
         # The same point the trace records, sent to the plugin so the world draws
         # it. Until this existed nothing on screen said where the vehicle was
@@ -916,7 +918,7 @@ class HoverNode(Node):
         # file so the ROS logger is not the bottleneck. Both references are here
         # alongside both measurements, so the IAE comes out of this file alone.
         (pitch_cmd, q_cmd, tau_y, sfit, om_min, thrust, fx, fz,
-         tau_y_real, thrust_real, tau_x_real) = self._log_extra
+         tau_y_real, thrust_real, tau_x_real, roll_cmd, p_cmd) = self._log_extra
         row = (
             # Simulated time, for the same reason the trajectory uses it: a trace
             # whose time column is a tick count times a nominal period reports the
@@ -930,6 +932,7 @@ class HoverNode(Node):
             tau_y_real, thrust_real, tau_x_real, torque[0],
             time.perf_counter() - self._wall0, self.odom_stamp,
             1000.0 * (time.perf_counter() - tick_t0),
+            self.attitude[0], roll_cmd, self.body_rate[0], p_cmd,
         )
         _t = time.perf_counter()
         self._trace.write(",".join("%.5f" % v for v in row) + "\n")
