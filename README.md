@@ -3,9 +3,9 @@
 ROS 2 / Gazebo simulation of a hexarotor carrying a 3-link arm, after
 Eskandarpour et al., *Decoupled Dynamic Modeling by Decomposing the
 Cross-Coupled Dynamics and Tube-Based LPV-MPC Control Scheme for Aerial
-Manipulation*, IEEE TAES 61(5), 2025. Tube-based LPV-MPC (3 MPCs:
-translational, rotational, arm) against a PD + ERTF baseline, across two
-scenarios (`nominal`, `fast`), visualized live in Gazebo.
+Manipulation*, IEEE TAES 61(5), 2025. PD + 2MPC (rotational, arm) against
+the ERTF baseline, across two scenarios (`nominal`, `fast`), visualized
+live in Gazebo.
 
 ## Run it
 
