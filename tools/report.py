@@ -123,6 +123,29 @@ def disturbance_windows(d):
     return windows
 
 
+def robust_ylim(reference, measured, pad_factor=1.5):
+    """Y-limits sized to the reference, not the measurement.
+
+    A run that diverges (or is hit hard enough by a disturbance to not
+    recover) can reach values orders of magnitude past anything the
+    reference ever asks for; scaling the axis to include it squashes the
+    well-behaved part -- exactly the part a disturbance response needs to be
+    readable in -- into a sliver at one edge. The reference stays sane
+    regardless of how badly the measurement fails, so it sets the window;
+    the divergence is left to run off the top or bottom of the plot, which
+    is the point.
+    """
+    lo, hi = float(np.min(reference)), float(np.max(reference))
+    span = hi - lo
+    if span < 1e-6:
+        # A flat or near-flat reference (yaw held at zero, a slow z ramp)
+        # still needs a real window: pad from the measurement's own spread
+        # instead of a zero-width one.
+        span = max(np.std(measured), 0.05)
+    pad = pad_factor * span
+    return lo - pad, hi + pad
+
+
 def plot_timeseries(runs, out=None):
     import matplotlib
     if out:
@@ -139,6 +162,7 @@ def plot_timeseries(runs, out=None):
     for ax, (meas, ref, ylabel) in zip(axes.flat, panels):
         ref_drawn = False
         span_drawn = False
+        ylim_ref = None
         for i, (label, d) in enumerate(runs.items()):
             if d.size < 2 or not has(d, meas):
                 continue
@@ -147,6 +171,7 @@ def plot_timeseries(runs, out=None):
             if not ref_drawn and has(d, ref):
                 ax.plot(d["t"], d[ref], "k--", lw=1.0, alpha=0.6, label="RT" if i == 0 else None)
                 ref_drawn = True
+                ylim_ref = (d[ref], d[meas])
             for w_start, w_end in disturbance_windows(d):
                 # A 0.25 s window barely shows as a span on a 30 s axis, so
                 # mark it as a line at its centre instead -- visible, and
@@ -154,6 +179,8 @@ def plot_timeseries(runs, out=None):
                 ax.axvline((w_start + w_end) / 2, color="goldenrod", lw=1.4,
                           ls=":", label="disturbance" if not span_drawn else None)
                 span_drawn = True
+        if ylim_ref is not None:
+            ax.set_ylim(*robust_ylim(*ylim_ref))
         ax.set_xlabel("time (s)")
         ax.set_ylabel(ylabel)
         ax.grid(alpha=0.3)
