@@ -103,6 +103,26 @@ def print_table_iii(runs):
     print()
 
 
+def disturbance_windows(d):
+    """Contiguous [start, end] pairs where dist_on is nonzero, from the trace
+    itself rather than a hardcoded schedule -- correct regardless of which
+    scenario or timing offset produced this particular run."""
+    if not has(d, "dist_on") or d.size < 2:
+        return []
+    on = d["dist_on"] > 0.5
+    windows = []
+    start = None
+    for i, flag in enumerate(on):
+        if flag and start is None:
+            start = d["t"][i]
+        elif not flag and start is not None:
+            windows.append((start, d["t"][i]))
+            start = None
+    if start is not None:
+        windows.append((start, d["t"][-1]))
+    return windows
+
+
 def plot_timeseries(runs, out=None):
     import matplotlib
     if out:
@@ -118,6 +138,7 @@ def plot_timeseries(runs, out=None):
     ]
     for ax, (meas, ref, ylabel) in zip(axes.flat, panels):
         ref_drawn = False
+        span_drawn = False
         for i, (label, d) in enumerate(runs.items()):
             if d.size < 2 or not has(d, meas):
                 continue
@@ -126,6 +147,13 @@ def plot_timeseries(runs, out=None):
             if not ref_drawn and has(d, ref):
                 ax.plot(d["t"], d[ref], "k--", lw=1.0, alpha=0.6, label="RT" if i == 0 else None)
                 ref_drawn = True
+            for w_start, w_end in disturbance_windows(d):
+                # A 0.25 s window barely shows as a span on a 30 s axis, so
+                # mark it as a line at its centre instead -- visible, and
+                # still exactly where the impulse hit.
+                ax.axvline((w_start + w_end) / 2, color="goldenrod", lw=1.4,
+                          ls=":", label="disturbance" if not span_drawn else None)
+                span_drawn = True
         ax.set_xlabel("time (s)")
         ax.set_ylabel(ylabel)
         ax.grid(alpha=0.3)
@@ -154,9 +182,20 @@ def plot_trajectory3d(runs, out=None):
             continue
         colour = COLOURS.get(i % len(COLOURS), None)
         ax.plot(d["x"], d["y"], d["z"], color=colour, lw=1.3, label=label)
+        ax.scatter(d["x"][0], d["y"][0], d["z"][0], color=colour, marker="o", s=70,
+                  edgecolor="black", zorder=5,
+                  label=f"{label} start" if len(runs) > 1 else "start")
+        ax.scatter(d["x"][-1], d["y"][-1], d["z"][-1], color=colour, marker="s", s=50,
+                  edgecolor="black", zorder=5,
+                  label=f"{label} end" if len(runs) > 1 else "end")
         if not ref_drawn:
             ax.plot(d["ref_x"], d["ref_y"], d["ref_z"], "g--", lw=1.2, label="RT")
             ref_drawn = True
+        for j, (w_start, w_end) in enumerate(disturbance_windows(d)):
+            idx = np.argmin(np.abs(d["t"] - (w_start + w_end) / 2))
+            ax.scatter(d["x"][idx], d["y"][idx], d["z"][idx], color="goldenrod",
+                      marker="*", s=180, edgecolor="black", zorder=6,
+                      label="disturbance" if j == 0 and i == 0 else None)
     ax.set_xlabel("x (m)")
     ax.set_ylabel("y (m)")
     ax.set_zlabel("z (m)")

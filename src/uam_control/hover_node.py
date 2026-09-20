@@ -327,7 +327,7 @@ class HoverNode(Node):
             'omega_min,thrust,vx,force_x,force_z,fbar_x,'
             'q0,q1,q2,qref0,qref1,qref2,'
             'tau_y_real,thrust_real,tau_x_real,tau_x,wall,sim,tick_ms,'
-            'roll,roll_cmd,p_meas,p_cmd,yaw,yaw_cmd\n')
+            'roll,roll_cmd,p_meas,p_cmd,yaw,yaw_cmd,dist_on\n')
         self.get_logger().info(f'holding {self.target}')
 
     def on_odom(self, m):
@@ -629,6 +629,11 @@ class HoverNode(Node):
         dist_force, dist_torque = disturbance(self.scenario, tt)
         self.disturbance_pub.publish(Float64MultiArray(
             data=[*dist_force.tolist(), *dist_torque.tolist()]))
+        # Logged as a flag, not the six components, because what a plot needs
+        # is "was it on", to shade the window it acted in -- not its exact
+        # value, which the schedule already documents.
+        self._log_disturbance = float(
+            np.any(dist_force != 0.0) or np.any(dist_torque != 0.0))
         start = np.array([self.origin[0], 0.0, self.origin[1], 0.0,
                           self.origin[2], 0.0])
         origin = translational_reference(self.scenario, 0.0)
@@ -943,6 +948,7 @@ class HoverNode(Node):
             1000.0 * (time.perf_counter() - tick_t0),
             self.attitude[0], roll_cmd, self.body_rate[0], p_cmd,
             self.attitude[2], self.yaw_reference,
+            getattr(self, '_log_disturbance', 0.0),
         )
         _t = time.perf_counter()
         self._trace.write(",".join("%.5f" % v for v in row) + "\n")
