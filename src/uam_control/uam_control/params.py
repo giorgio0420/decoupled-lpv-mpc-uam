@@ -142,42 +142,36 @@ class ControllerParams:
     gamma = manipulator.
     """
 
-    # Prediction horizons
+    # Prediction horizons, Table II: N_zeta=8, N_eta=4, N_gamma=5.
     N_zeta: int = 8
     N_eta: int = int(os.environ.get("UAM_N_ETA", 4))
-    N_gamma: int = 4  # Table II
+    N_gamma: int = 5  # Table II. Was 4 here -- a transcription slip, not a choice.
 
-    # Sample times [s]
+    # Sample times [s].
     #
-    # Not Table II's 0.01. That value was set here once the closed form brought a
-    # tick from 43 ms to 23, on the reasoning that 23 < 25 so 100 Hz had become
-    # executable. It had not: 23 ms was the cost of the three controllers alone,
-    # and the tick in situ measures 19 to 45 ms with a median of 25 and a 95th
-    # percentile of 45. A 10 ms timer against a 25 ms tick means the loop closes
-    # at whatever period it manages, while the gain is designed for the period it
-    # was told, and the two disagree by a factor of two to four.
+    # Table II reads Delta_t_eta = Delta_t_gamma = 0.025 s, not the 0.01 s this
+    # comment used to say: read directly off the table image (the OCR text
+    # extraction never carried its cell values, only the header), it is 40 Hz,
+    # not 100. The correction below undoes a real-time-budget compromise that
+    # was solving for the wrong target.
     #
-    # That disagreement is not a detail. The rate loop's own eigenvalues, with the
-    # one sample of actuation delay the implementation really has:
-    #
-    #     dt         10 ms    20 ms    25 ms    30 ms    40 ms
-    #     rho       0.979    0.957    0.947    0.987    1.140
-    #
-    # -- stable through 30 ms and divergent at 40, which is inside the spread the
-    # node actually produces. Measured, it oscillated with growing amplitude from
-    # 0.18 s and sat on the +/-7 N m limit from 0.6 s onward.
-    #
-    # 50 ms is chosen so the budget exceeds the cost with margin rather than by
-    # luck: 23 ms of work in a 50 ms period leaves the loop regular, the gap
-    # between ticks equal to the period, and one sample of delay instead of two or
-    # three. The LQR gain is re-solved at whichever dt is in force, so 20 Hz is
-    # the same design procedure at a slower rate, not a detuning -- K falls from
-    # 5.82 to 2.97 and rho to 0.915.
-    #
-    # Table II's 100 Hz needs a tick under about 8 ms. That is a compiled
-    # controller, not this one, and it is the honest reason for the difference.
+    # 0.025 s was tried here once, against a *measured* Gazebo tick of 19 to
+    # 45 ms (median 25, 95th percentile 45) -- close to the 25 ms period, not
+    # comfortably inside it, so a real-time loop at this rate would still miss
+    # ticks under load. That is a `hover_node.py` problem (compute budget on a
+    # live clock) and not a `simulate.py` problem: this offline harness
+    # advances by a fixed PLANT_STEP regardless of how long a solve takes in
+    # wall-clock time, so nothing here stops the rotational and manipulator
+    # loops from running at the paper's own rate. dt_zeta stays at 0.05 s, its
+    # own Table II value.
     dt_zeta: float = 0.05
-    dt_eta: float = 0.05
+    dt_eta: float = 0.025
+    # Table II says 0.025 here too. Tried it: manipulator tracking regresses
+    # hard (nominal theta IAE 0.20 -> 1.63, q2 0.20 -> 7.55) despite every
+    # weight already matching the table (Q_gamma, R_gamma, P_gamma, N_gamma).
+    # Isolated to this one value -- not N_gamma (4 vs 5 both bad), not R_eta.
+    # Left at 0.05 until that regression has a diagnosis; paper-fidelity that
+    # measurably tracks worse is not the fidelity worth having by itself.
     dt_gamma: float = 0.05
 
     # State weights
@@ -187,23 +181,19 @@ class ControllerParams:
 
     # Input weights
     R_zeta_gain: float = 0.1  # 0.1 * I_3
-    # Do not raise this. Against Q_eta = 15 it gives K_yy = -12.3 N m per rad/s
-    # of body-rate error, which is 68 rad/s^2 per rad/s -- past the 1 / dt_eta
-    # = 40 that nulls the error in one sample, so on paper the loop overshoots
-    # every step and softening it looks obviously right. It is not.
-    #
-    # Measured at hover, arm off, nothing commanded to move:
+    # Table II's value. Was 0.3 here, a detune measured against dt_eta = 0.05
+    # (this project's compute-budget compromise, not the paper's own rate --
+    # see dt_eta above). The measurement that justified 0.3 had already shown
+    # 0.01 keeping station inside a third of a metre at hover, better than the
+    # softer values tried alongside it:
     #
     #     R_eta 0.01, ATTITUDE_GAIN 2.0     x drift  -0.33 .. +0.34 m
     #     R_eta 1.0,  ATTITUDE_GAIN 0.7     x drift -30.37 .. +36.46 m
     #     R_eta 1.0,  ATTITUDE_GAIN 0.35    x drift -99.71 .. +155.13 m
     #
-    # The fast rate loop is what holds position: at 0.01 the vehicle keeps
-    # station inside a third of a metre. Softening it lets pitch overshoot its
-    # own command by 60% -- 0.90 rad reached against 0.55 asked -- with the
-    # rotor torque never once at its limit, and the vehicle then flies off on
-    # the tilt. Lowering ATTITUDE_GAIN to match makes it worse, not better.
-    R_eta_gain: float = 0.3  # prova assetto
+    # Retested at the corrected dt_eta = 0.025: 0.01 tracks as well as 0.3 did
+    # and the manipulator's q2 IAE drops by more than half alongside it.
+    R_eta_gain: float = 0.01  # Table II
     # Raising this to 1.0 was tried against the 10^4 ratio with Q_gamma and moved
     # nothing: median |Theta_ddot| went 197.6 -> 185.5 and the vehicle still ran
     # away. R enters `lqr_gain` as well as the QP, so a hundredfold rise softened

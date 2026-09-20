@@ -355,7 +355,8 @@ once the caller clipped the realised force after the fact. Fixed by bounding
 the running sum of the increment directly in the QP (`solve_mpc`'s
 `cumulative_bounds`).
 
-It did not fix the symptom. Measured on `nominal`, offline:
+It did not fix the symptom by itself. Measured on `nominal`, offline, before the
+timing fix below:
 
 * Pure `hover` (constant, zero reference): perfect, IAE 0 on every axis.
 * Any moving reference: phi/theta IAE around 11 rad·s, roll and pitch reference
@@ -366,15 +367,73 @@ It did not fix the symptom. Measured on `nominal`, offline:
   state's `Delta x_m` block instead of zero, a lighter weight on that same
   block, or disabling the arm's reaction feedback into `attitude_reference`.
   None of the usual MPC knobs touch it.
+* Isolated further: real nonlinear physics plus the *real* `attitude_reference`
+  conversion but attitude achieved instantly (bypassing only the rotational
+  loop's own dynamics) tracks to <3 cm and never exceeds 0.05 rad of tilt. Real
+  `RotationalTubeMPC` closed in, arm bolted and reaction zeroed: the same
+  oscillation reappears. So the fault is not the force-to-angle conversion and
+  not the arm; it is specific to closing the loop through the real rotational
+  MPC's own dynamics while tracking a *moving* translational reference.
 
-So the fault is not tuning and not the arm coupling; it is specific to
-*tracking a moving reference* versus holding a fixed one, and it survives
-retuning the stage cost in every direction tried. The augmented model's own
-matrix has all twelve eigenvalues at exactly 1.0 (no resonant mode to explain
-the ~1.2-1.5 s oscillation period), so the cause is in the closed loop the
-receding-horizon replanning forms with the plant, not in the open-loop model.
-Next step is instrumenting a single QP solve near the onset (t ~ 0.5-1.5 s on
-`nominal`) rather than more parameter sweeps.
+Three transcription errors against Table II, found by finally rendering it as
+an image rather than trusting the PDF's text layer (a table's cell values do
+not come through `pdftotext`/`pdfplumber`, only its header):
+
+* `dt_eta` was 0.05 s here; Table II gives 0.025 s. The code had read this as
+  Table II's "0.01 s" from memory (100 Hz) and found that genuinely infeasible
+  -- a ~23-45 ms Python/OSQP tick against a 10 ms budget -- so it gave up on
+  multi-rate entirely and ran every stage at 0.05 s. 0.025 s (40 Hz) is a
+  different, much closer target: marginal but not obviously impossible for a
+  live Gazebo loop, and offline `simulate.py` has no wall-clock budget to miss
+  in the first place.
+* `R_eta_gain` was 0.3, a detune measured against the wrong `dt_eta`. Table II
+  says 0.01, and that value was already the better one in the measurement that
+  justified 0.3 -- it just wasn't re-checked once the sampling time it was
+  tuned against turned out to be wrong.
+* `N_gamma` was 4; Table II says 5.
+
+Correcting `dt_eta` and `R_eta_gain` measurably helps **both** paths on
+`nominal`: PD's q1/q2/q3 IAE drop by 4-12x with no regression on position or
+attitude, and `TranslationalMPC`'s x/y/q1/q2/q3 all improve past both the PD
+and the ERTF baseline. Attitude on the `TranslationalMPC` path is still bad
+(phi/theta/psi IAE ~8.5, against ~0.1-0.2 for PD and ~0.1-2.1 for ERTF) --
+better than before (~11) but the underlying bandwidth-competition problem
+above is not resolved by the timing fix alone.
+
+`N_gamma`'s correction is neutral (4 and 5 give the same bad number below), and
+`dt_gamma` was **not** moved to Table II's 0.025 s: tried in isolation, it
+regresses the manipulator badly (nominal PD path: theta IAE 0.20 -> 1.63, q2
+0.20 -> 7.55) despite every weight already matching the table. Not explained
+yet -- `dt_gamma` stays at 0.05 s until it is.
+
+A gap in the paper itself, found while looking for the fix: the text goes
+straight from the reference Euler *angles* (Eq. 20-21) to "using the obtained
+reference Euler *rates*, the angular body rate should be calculated through
+(2)" -- no equation connects the two. Differencing successive angle commands
+across separate translational-MPC calls (the obvious reading) was tried before
+today and destabilises, because a receding-horizon replan can jump the
+commanded angle between calls with nothing tying the two together.
+
+A different reading was tried: `TranslationalMPC` already solves for the whole
+horizon in one QP, so `predicted_force_next` (step 1 of the same predicted
+trajectory step 0 came from) differences *within* one solve instead of across
+calls. Wired in behind `hasattr(translational, "predicted_force_next")`, so
+the PD path is untouched. In the arm-bolted isolation bench this brought max
+roll from 0.62 rad down to 0.07, stable. In the full loop, arm free, it is a
+mixed result, not a fix: q1/q2/q3 IAE drop sharply (1.3/2.5/0.4 -> 0.21/0.29/
+0.13, better than PD), but x/y diverge (IAE in the thousands) and phi/theta
+IAE gets *worse* (~8.5 -> ~17-19). The rate this produces is evidently harder
+for the real `RotationalTubeMPC` to track than the old proportional one, in
+exactly the way every other isolated fix today looked good bolted and broke
+free -- same pattern, different mechanism, still open.
+
+Next step on the remaining attitude problem: either accept the position/
+attitude trade-off already found (a slew limiter or PT1 filter on the
+roll/pitch command trades one against the other smoothly, but neither reaches
+PD-level quality on both at once -- see the git history around this section
+for the numbers), or add a genuine rate-of-attitude-change term to
+`TranslationalMPC`'s own cost so the trade-off is resolved jointly instead of
+by clipping downstream.
 
 ### 4.5 What has no counterpart in the paper
 

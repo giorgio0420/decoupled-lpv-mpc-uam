@@ -44,6 +44,7 @@ from .controllers import (
     PositionPD,
     TranslationalMPC,
     attitude_reference,
+    attitude_rate_command,
     euler_rate_to_body_rate,
 )
 from .coupling import decompose
@@ -60,7 +61,12 @@ from .trajectory import (
 )
 
 PLANT_STEP = 0.0025
-ATTITUDE_GAIN = 3.0
+# Per-axis: roll/pitch fast, yaw slow. A shared scalar gain applied to yaw as
+# well was what previously sent yaw torque to its actuator limit -- this
+# airframe's k_m / k_f = 0.02, so yaw needs about fifty times less gain than
+# roll or pitch for the same rotor authority. Matches hover_node.py's tuned
+# ATTITUDE_GAIN.
+ATTITUDE_GAIN = np.array([4.0, 4.0, 0.05])
 STATE_LABELS = ("x", "y", "z", "phi", "theta", "psi", "q1", "q2", "q3")
 
 
@@ -119,6 +125,14 @@ def run(
         if os.environ.get("UAM_TRANS_MPC") == "1"
         else PositionPD()
     )
+    # UAM_TILT_SLEW [rad/s], unset = unbounded. A passive rate limit on the
+    # roll/pitch command between the translational and rotational stages:
+    # unlike a gain, it can only slow the demand down, never amplify it, so it
+    # cannot itself destabilise the loop the way retuning K or Q/R did in
+    # testing (see README 4.4). Tries to buy back the phase margin the
+    # 1-sample delay costs without touching either controller's own tuning.
+    tilt_slew = float(os.environ.get("UAM_TILT_SLEW", "inf"))
+    previous_tilt = np.zeros(2)
     use_lpv = controller == "lpv"
     rotational = RotationalTubeMPC() if use_lpv else None
     manipulator = ManipulatorTubeMPC() if use_lpv else None
@@ -180,14 +194,52 @@ def run(
             attitude_target = attitude_reference(
                 optimal_force, coupling, 0.0, state.attitude
             )
+            if np.isfinite(tilt_slew):
+                demanded = np.array([attitude_target.roll, attitude_target.pitch])
+                step_limit = tilt_slew * CONTROL.dt_zeta
+                limited = previous_tilt + np.clip(
+                    demanded - previous_tilt, -step_limit, step_limit
+                )
+                previous_tilt = limited
+                attitude_target = AttitudeReference(
+                    thrust=attitude_target.thrust, roll=limited[0], pitch=limited[1]
+                )
 
             desired = np.array([attitude_target.roll, attitude_target.pitch, 0.0])
             previous_attitude_ref = desired
-            euler_rates = ATTITUDE_GAIN * (desired - state.attitude)
-            body_rate_target = (
-                euler_rate_to_body_rate(state.attitude[0], state.attitude[1])
-                @ euler_rates
-            )
+
+            if hasattr(translational, "predicted_force_next"):
+                # Step 4, read literally: the paper says "using the obtained
+                # reference Euler rates" without ever showing the equation
+                # that produces them from the angles of Eq. (20)-(21) -- a
+                # real gap in the text, not an omitted triviality. Differencing
+                # across separate calls (the obvious reading) was tried before
+                # today and destabilises, because a receding-horizon replan can
+                # jump the commanded angle between calls with nothing tying the
+                # two together. This differences *within* the single solve that
+                # just ran instead: `predicted_force_next` is step 1 of the
+                # same predicted trajectory step 0 (`optimal_force`) came from,
+                # so both angles come from one continuous plan and the rate
+                # between them is the one the optimiser actually committed to.
+                next_target = attitude_reference(
+                    translational.predicted_force_next, coupling, 0.0, state.attitude
+                )
+                eta_dot_r = np.array([
+                    next_target.roll - attitude_target.roll,
+                    next_target.pitch - attitude_target.pitch,
+                    0.0,
+                ]) / CONTROL.dt_zeta
+                body_rate_target = euler_rate_to_body_rate(
+                    attitude_target.roll, attitude_target.pitch
+                ) @ eta_dot_r
+            else:
+                # SO(3) geometric error, not B_T_I @ (gain * euler_error): the
+                # latter's pitch row carries a factor of cos(roll) and
+                # annihilates the pitch command at roll = +/-pi/2. See
+                # attitude_rate_command's docstring for the crash this avoids.
+                body_rate_target = attitude_rate_command(
+                    state.attitude, attitude_target.roll, attitude_target.pitch,
+                    0.0, ATTITUDE_GAIN)
 
         # Algorithm 1, steps 5-8: the two tube-based controllers.
         if step % fast_every == 0:

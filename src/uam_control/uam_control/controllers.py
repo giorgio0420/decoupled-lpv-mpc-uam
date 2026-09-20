@@ -261,6 +261,11 @@ class TranslationalMPC:
 
         self._previous_state: np.ndarray | None = None
         self._previous_input = np.zeros(3)
+        # u_zeta(1|k), the force the *same* solve predicts one step ahead. Not
+        # a second controller call -- one QP already commits to a trajectory
+        # over the whole horizon, and this is step 1 of it. See the docstring
+        # on `predicted_force_next` for what it is for.
+        self.predicted_force_next = np.array([0.0, 0.0, mass * GRAVITY])
 
         self.state_bounds = [
             BoxConstraint(
@@ -318,7 +323,7 @@ class TranslationalMPC:
         augmented = np.concatenate([plant_state - self._previous_state, plant_state])
         target = np.hstack([np.zeros((self.horizon, 6)), reference])
 
-        delta_u = solve_mpc(
+        delta_u_sequence = solve_mpc(
             augmented,
             target,
             [self.A] * self.horizon,
@@ -330,20 +335,32 @@ class TranslationalMPC:
             self.input_bounds,
             self.cumulative_bounds,
             self._previous_input,
-        )[0]
+        )
 
         self._previous_state = plant_state.copy()
         # The QP now plans against the same absolute ceiling this applies, so
         # the clip below is a numerical safety net, not where the actuator
         # limit is actually enforced.
         self._previous_input = np.clip(
-            self._previous_input + delta_u, -LIMITS.force_xy, LIMITS.force_xy
+            self._previous_input + delta_u_sequence[0], -LIMITS.force_xy, LIMITS.force_xy
         )
         weight = self.mass * GRAVITY
         u_zeta = self._previous_input.copy()
         u_zeta[2] = np.clip(
             u_zeta[2] + weight, LIMITS.force_z_min, LIMITS.force_z_max
         )
+
+        # Step 1 of the same predicted trajectory, same clipping, so a caller
+        # differencing this against u_zeta gets the rate the solve actually
+        # committed to rather than a discontinuity from replanning between
+        # calls. See `predicted_force_next`'s note at __init__.
+        next_force = np.clip(
+            self._previous_input + delta_u_sequence[1], -LIMITS.force_xy, LIMITS.force_xy
+        )
+        next_force[2] = np.clip(
+            next_force[2] + weight, LIMITS.force_z_min, LIMITS.force_z_max
+        )
+        self.predicted_force_next = next_force
         return u_zeta
 
 
