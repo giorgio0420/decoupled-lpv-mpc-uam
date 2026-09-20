@@ -193,15 +193,24 @@ def joint_reference(scenario: Scenario, t: float) -> np.ndarray:
 def disturbance(scenario: Scenario, t: float) -> tuple[np.ndarray, np.ndarray]:
     """Impulsive wind disturbance of Eq. (50).
 
-    The paper applies the three impulses at 7.5 s, 15 s and 22.5 s with
-    magnitudes in the ratio 1/2 : 1 : -1. They are applied here over a 0.25 s
-    window rather than as true impulses, so that the integrator sees them.
+    The paper applies the three impulses at 7.5 s, 15 s and 22.5 s of its own
+    clean clock, magnitudes in the ratio 1/2 : 1 : -1. That clock and this
+    scenario's `t` are not the same thing here: `hover_node.py` shifts `t` by
+    `trajectory_start` (8 s) before this is ever called, and the report/IAE
+    tools additionally exclude everything before `t = 14` s (8 s
+    trajectory_start + 6 s EASE_TIME) as settling transient. The paper's
+    7.5 s instant would fall inside that excluded window and the first impulse
+    would never show up in a measurement. Shifted here to 15/20/25 s instead,
+    same ratio, comfortably inside both the reported window and the 30 s
+    scenario duration -- a reporting-window fix, not a change to the paper's
+    1/2 : 1 : -1 pattern. They are applied here over a 0.25 s window rather
+    than as true impulses, so that the integrator sees them.
     """
     if not scenario.disturbances:
         return np.zeros(3), np.zeros(3)
 
     width = 0.25
-    schedule = ((7.5, 0.5), (15.0, 1.0), (22.5, -1.0))
+    schedule = ((15.0, 0.5), (20.0, 1.0), (25.0, -1.0))
     base_force = np.array([3.0, 3.0, -3.0])
     base_torque = np.array([0.2, 0.2, -0.2])
 
