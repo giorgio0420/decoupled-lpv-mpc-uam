@@ -19,10 +19,4 @@ setup(
         "aerial manipulator, after Eskandarpour et al., IEEE TAES 61(5), 2025."
     ),
     license="MIT",
-    tests_require=["pytest"],
-    entry_points={
-        "console_scripts": [
-            "simulate = uam_control.simulate:main",
-        ],
-    },
 )
