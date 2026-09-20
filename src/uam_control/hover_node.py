@@ -33,7 +33,7 @@ from uam_control.params import (
 )
 from uam_control.trajectory import (
     SCENARIOS, translational_reference, joint_reference as paper_joint_reference,
-    horizon_reference as joint_horizon,
+    horizon_reference as joint_horizon, disturbance,
 )
 
 # Per-axis, not one number for all three. Yaw is produced by rotor drag, roll and
@@ -242,7 +242,7 @@ class HoverNode(Node):
             self.get_logger().info('stadio traslazionale: MPC lineare vincolato')
         else:
             self.pd = PositionPD(
-                bandwidth=float(os.environ.get('UAM_POS_BW', 1.5)))
+                bandwidth=float(os.environ.get('UAM_POS_BW', 2.0)))
         # UAM_USE_ERTF=1 flies Section V's baseline instead of the two tube
         # controllers, so the paper's headline comparison -- Table III, LPV-MPC
         # against Estimating-Reaction-Torque-and-Force -- can be run as two
@@ -281,6 +281,12 @@ class HoverNode(Node):
             Point, '/uav/reference', 1)
         self.rotors = self.create_publisher(Float64MultiArray, '/rotor_speeds', 10)
         self.joint_torques = self.create_publisher(Float64MultiArray, '/joint_torques', 10)
+        # Eq. (50)'s wind impulses. Only `disturbance` scenario has nonzero
+        # values here (trajectory.disturbance returns zero otherwise), so this
+        # is silently a no-op on every other scenario and safe to publish
+        # unconditionally every tick.
+        self.disturbance_pub = self.create_publisher(
+            Float64MultiArray, '/uav/disturbance', 1)
         # No timer. The simulator drives the controller.
         #
         # A ROS timer runs on the wall clock and the physics runs on its own, so
@@ -620,6 +626,9 @@ class HoverNode(Node):
         # time. The position loop answers the velocity error, and it had left
         # before the run began.
         tt = max(t, 0.0)
+        dist_force, dist_torque = disturbance(self.scenario, tt)
+        self.disturbance_pub.publish(Float64MultiArray(
+            data=[*dist_force.tolist(), *dist_torque.tolist()]))
         start = np.array([self.origin[0], 0.0, self.origin[1], 0.0,
                           self.origin[2], 0.0])
         origin = translational_reference(self.scenario, 0.0)

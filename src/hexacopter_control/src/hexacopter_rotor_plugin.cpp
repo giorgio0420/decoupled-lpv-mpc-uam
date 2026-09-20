@@ -112,6 +112,28 @@ public:
 
     this->maxJointTorque_ = _sdf->Get<double>("max_joint_torque", 6.0).first;
 
+    // Eq. (50)'s wind impulses, offline since the first commit but never
+    // reaching Gazebo: nothing here applied them, so the `disturbance`
+    // scenario ran the rectangular path with no actual disturbance in it.
+    // Six numbers, world frame -- [fx, fy, fz, tx, ty, tz] -- matching the
+    // convention `trajectory.disturbance()` already returns and `plant.py`
+    // already adds directly to the inertial-frame acceleration, so nothing
+    // here needs rotating before use, only the rotor wrench below does.
+    this->disturbance_ = this->node_->create_subscription<std_msgs::msg::Float64MultiArray>(
+      "/uav/disturbance", rclcpp::QoS(1),
+      [this](const std_msgs::msg::Float64MultiArray::SharedPtr msg)
+      {
+        if (msg->data.size() != 6)
+        {
+          RCLCPP_WARN(this->node_->get_logger(),
+            "Ignoring /uav/disturbance: expected 6 values, got %zu", msg->data.size());
+          return;
+        }
+        std::lock_guard<std::mutex> lock(this->commandMutex_);
+        this->disturbanceForce_ = {msg->data[0], msg->data[1], msg->data[2]};
+        this->disturbanceTorque_ = {msg->data[3], msg->data[4], msg->data[5]};
+      });
+
     // The commanded pose, drawn in the world so a watcher can tell tracking from
     // wandering. Until now nothing in the window said where the vehicle was
     // *supposed* to be, so a run that held station to 12 cm and one that drifted
@@ -186,9 +208,13 @@ public:
     }
 
     std::array<double, 6> omega;
+    ignition::math::Vector3d disturbanceForce;
+    ignition::math::Vector3d disturbanceTorque;
     {
       std::lock_guard<std::mutex> lock(this->commandMutex_);
       omega = this->omega_;
+      disturbanceForce = this->disturbanceForce_;
+      disturbanceTorque = this->disturbanceTorque_;
     }
 
     // Not Link::WorldPose: that reads a components::WorldPose which nothing
@@ -454,10 +480,13 @@ public:
     // 19 rad/s. So this rotation is correct as written and worldPose.Rot() is
     // body-to-world, which also means the torque the plugin builds reaches the
     // body unchanged in sign.
+    // The rotor wrench is built in the body frame and rotated here; the
+    // disturbance is already world frame (it is wind), so it is added after
+    // the rotation, not before it.
     this->baseLink_.AddWorldWrench(
       _ecm,
-      worldPose.Rot().RotateVector(forceBody),
-      worldPose.Rot().RotateVector(torqueBody));
+      worldPose.Rot().RotateVector(forceBody) + disturbanceForce,
+      worldPose.Rot().RotateVector(torqueBody) + disturbanceTorque);
   }
 
 private:
@@ -566,6 +595,9 @@ private:
   std::array<ignition::gazebo::Entity, 3> armJoints_{};
   std::array<double, 3> jointTorque_{};
   double maxJointTorque_{6.0};
+  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr disturbance_;
+  ignition::math::Vector3d disturbanceForce_{0, 0, 0};
+  ignition::math::Vector3d disturbanceTorque_{0, 0, 0};
 
   // Reference marker. `markerNode_` talks to Ignition's own transport, which is
   // a different bus from the ROS one the rest of this plugin uses.
